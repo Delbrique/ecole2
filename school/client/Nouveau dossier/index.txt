@@ -1,0 +1,110 @@
+<?php
+session_start();
+require_once '../classes/db_connect.php';
+require_once '../classes/StudentAccount.php';
+
+$error = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $matricule = $_POST['matricule'];
+    $password = $_POST['password'];
+
+    $studentAccount = new StudentAccount();
+    $isFirstLogin = $studentAccount->isFirstLogin($matricule, $password);
+
+    if ($isFirstLogin) {
+        $_SESSION['matricule'] = $matricule;
+        header('Location: change.php');
+        exit();
+    } elseif ($studentAccount->authenticate($matricule, $password)) {
+        $_SESSION['matricule'] = $matricule;
+        header('Location: card.php');
+        exit();
+    } else {
+        $error = "Matricule ou mot de passe incorrect.";
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion Étudiant</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #A2C2E3, #F1A7C4);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #333;
+        }
+        .login-container {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0px 15px 40px rgba(0, 0, 0, 0.1);
+            max-width: 420px;
+            text-align: center;
+            width: 100%;
+        }
+        h2 {
+            margin-bottom: 20px;
+            font-size: 26px;
+            font-weight: 600;
+            color: #6B6B6B;
+            letter-spacing: 1px;
+        }
+        .input-field {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 10px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            color: #333;
+            font-size: 16px;
+            transition: border 0.3s ease-in-out;
+        }
+        .input-field:focus {
+            border-color: #F1A7C4;
+            outline: none;
+        }
+        .login-btn {
+            background-color: #F1A7C4;
+            color: white;
+            padding: 14px 25px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 20px;
+        }
+        .login-btn:hover {
+            background-color: #A2C2E3;
+            transform: scale(1.05);
+        }
+        .error-message {
+            color: #ff0000;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+<div class="login-container">
+    <h2>Connexion Étudiant</h2>
+    <form method="POST" action="">
+        <input type="text" name="matricule" class="input-field" placeholder="Matricule" required>
+        <input type="password" name="password" class="input-field" placeholder="Mot de passe" required>
+        <button type="submit" class="login-btn">Se connecter</button>
+        <div class="error-message"><?php echo $error; ?></div>
+    </form>
+</div>
+</body>
+</html>

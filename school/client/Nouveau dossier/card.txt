@@ -1,0 +1,163 @@
+<?php
+session_start();
+require_once '../classes/db_connect.php';
+require('../extractor_pdf/fpdf.php'); // Assurez-vous que la bibliothèque FPDF est correctement incluse.
+
+if (!isset($_SESSION['matricule'])) {
+    header('Location: index.php');
+    exit();
+}
+
+$matricule = $_SESSION['matricule'];
+
+// Récupération des informations de l'étudiant à partir de la base de données
+$database = new Database1();
+$conn = $database->getConnection();
+$query = "SELECT * FROM etudiant_infos WHERE matricule = :matricule";
+$stmt = $conn->prepare($query);
+$stmt->bindParam(':matricule', $matricule);
+$stmt->execute();
+$studentInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// Fonction pour générer la carte étudiant en PDF et l'envoyer au navigateur
+function generateStudentCard($matricule, $nom, $prenom, $classe, $date_naissance, $image_path) {
+    // Initialiser FPDF
+    $pdf = new FPDF('P', 'mm', 'A4');
+    $pdf->AddPage();
+    $pdf->SetMargins(10, 10, 10);
+
+    // Style de la carte étudiant
+    $pdf->SetFillColor(240, 240, 255); // Fond clair
+    $pdf->SetDrawColor(200, 200, 200); // Bordure douce
+    $pdf->SetTextColor(50, 50, 50);
+
+    // Conteneur de la carte
+    $pdf->SetXY(20, 40);
+    $pdf->SetFont('Arial', 'B', 18);
+    $pdf->Cell(170, 10, 'Carte Etudiant', 0, 1, 'C', true);
+    $pdf->Ln(10);
+
+    // Ajout de l'image (photo de profil)
+    if (!empty($image_path) && file_exists('../photos/' . $image_path)) {
+        $pdf->Image('../photos/' . $image_path, 85, 55, 40, 40); // Centré
+        $pdf->Ln(50);
+    }
+
+    // Informations de l'étudiant
+    $pdf->SetFont('Arial', '', 14);
+    $pdf->Cell(0, 10, 'Matricule: ' . $matricule, 0, 1, 'C');
+    $pdf->Cell(0, 10, 'Nom: ' . $nom, 0, 1, 'C');
+    $pdf->Cell(0, 10, 'Prenom: ' . $prenom, 0, 1, 'C');
+    $pdf->Cell(0, 10, 'Classe: ' . $classe, 0, 1, 'C');
+    $pdf->Cell(0, 10, 'Date de Naissance: ' . $date_naissance, 0, 1, 'C');
+
+    // Ajout d'une bordure autour de la carte
+    $pdf->SetXY(15, 35);
+    $pdf->SetLineWidth(0.5);
+    $pdf->Rect(15, 35, 180, 160, 'D');
+
+    // Sortie PDF directement dans le navigateur
+    header('Content-Type: application/pdf');
+    header('Content-Disposition: attachment; filename="carte_etudiant_' . $matricule . '.pdf"'); // Modifié pour le téléchargement
+    $pdf->Output('D'); // 'D' pour forcer le téléchargement
+
+    exit();
+}
+
+// Vérifiez si le bouton "Exporter" a été cliqué
+if (isset($_POST['export'])) {
+    generateStudentCard(
+        $studentInfo['matricule'],
+        $studentInfo['nom'],
+        $studentInfo['prenom'],
+        $studentInfo['classe'],
+        $studentInfo['date_naissance'],
+        $studentInfo['image_path']
+    );
+}
+?>
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carte de l'étudiant</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #A2C2E3, #F1A7C4);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0px 15px 40px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            margin: auto;
+            text-align: center;
+            position: relative;
+        }
+        .card img {
+            width: 120px; 
+            height: 120px; 
+            border-radius: 50%; 
+            object-fit: cover; 
+            margin-bottom: 20px;
+        }
+        .logout-btn {
+            background-color: #F1A7C4;
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            position: absolute; 
+            top: 20px; 
+            right: 20px; 
+            transition: background-color 0.3s, transform 0.3s;
+        }
+        .logout-btn:hover {
+            background-color: #A2C2E3;
+            transform: scale(1.05);
+        }
+        .export-btn {
+            background-color: #F1A7C4;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+            display: inline-block; 
+            transition: background-color 0.3s, transform 0.3s;
+        }
+        .export-btn:hover {
+            background-color: #A2C2E3;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <button class="logout-btn" onclick="location.href='logout.php'">Se déconnecter</button>
+    <h2>Carte de l'étudiant</h2>
+    <img src="../photos/<?php echo $studentInfo['image_path']; ?>" alt="Image de l'étudiant">
+    <p><strong>Matricule:</strong> <?php echo $studentInfo['matricule']; ?></p>
+    <p><strong>Nom:</strong> <?php echo $studentInfo['nom']; ?></p>
+    <p><strong>Prénom:</strong> <?php echo $studentInfo['prenom']; ?></p>
+    <p><strong>Classe:</strong> <?php echo $studentInfo['classe']; ?></p>
+    <p><strong>Email:</strong> <?php echo $studentInfo['email']; ?></p>
+    <p><strong>Date de Naissance:</strong> <?php echo $studentInfo['date_naissance']; ?></p>
+    
+    <form method="POST" action="">
+        <button type="submit" name="export" class="export-btn">Exporter la carte d'étudiant</button>
+    </form>
+</div>
+</body>
+</html>
